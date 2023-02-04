@@ -1,0 +1,74 @@
+<<: !include secrets.yaml
+
+esphome:
+  name: homebrew-fridge
+
+esp8266:
+  board: nodemcu
+
+# Enable logging
+logger:
+
+captive_portal:
+
+switch:
+  - platform: gpio
+    name: "Pump"
+    pin: D0
+    restore_mode: ALWAYS_OFF 
+    id: fridge_pump_relay
+    inverted: true
+  - platform: gpio
+    name: "Compressor"
+    pin: D1
+    id: fridge_compressor_relay
+    restore_mode: ALWAYS_OFF 
+    inverted: true
+
+dallas:
+  - pin: D2
+
+sensor:
+  - platform: dallas
+    address: 0x213c01d075d7a728
+    name: "Tank Temperature"
+    id: fridge_tank_temp
+text_sensor:
+  - platform: homeassistant
+    name: "Fermentation Controller Requested Action"
+    id: fermentation_controller_action
+    entity_id: climate.fermentation_controller
+    attribute: hvac_action
+    on_value:
+      - if: 
+          condition: 
+            text_sensor.state:
+              id: fermentation_controller_action
+              state: 'cooling'
+          then:
+            - switch.turn_on: fridge_compressor_relay
+            - switch.turn_on: fridge_pump_relay
+      - if: 
+          condition: 
+            text_sensor.state:
+              id: fermentation_controller_action
+              state: 'heating'
+          then:
+            - switch.turn_off: fridge_compressor_relay
+            - switch.turn_off: fridge_pump_relay
+      - if: 
+          condition: 
+            text_sensor.state:
+              id: fermentation_controller_action
+              state: 'Off'
+          then:
+            - switch.turn_off: fridge_compressor_relay
+            - switch.turn_off: fridge_pump_relay
+      - if: 
+          condition: 
+            text_sensor.state:
+              id: fermentation_controller_action
+              state: 'idle'
+          then:
+            - switch.turn_off: fridge_compressor_relay
+            - switch.turn_off: fridge_pump_relay
